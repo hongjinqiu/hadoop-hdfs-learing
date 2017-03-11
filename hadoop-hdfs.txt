@@ -1,0 +1,106 @@
+阅读一下架构HDFS Architecture Guide,
+网址是:https://hadoop.apache.org/docs/r1.2.1/hdfs_design.html
+
+Streaming Data Access,流数据访问,
+
+HDFS设计用来做批量处理,而不是用户交互处理.
+适合高吞量的数据访问,而不是低延迟的数据访问.
+
+
+Simple Coherency Model
+简单的一致性模型,write-once-read-many,目前不支持appending-writes.
+
+NameNode:执行文件命名空间操作,像打开,关闭,重命名文件和文件夹.同时监测DataNode的block,
+DataNode:处理客户端的文件读写.同时处理block的创建,删除,和来自NameNode的副本同步.
+
+Data Replication
+
+HDFS中的文件只能写入,并且只能写一次.
+
+NameNode做块的复制决定,从集群中的DataNode定期接受心跳.
+
+NameNode通过Hadoop Rack Awareness来侦探每个DataNode的支架ID.
+
+Replica Selection:离请求较近的副本优先读取.
+
+Safemode,NameNode在启动时,进入了Safemode,这个期间,数据块不会发生复制.
+
+当一定数量的副本向NameNode check in时,那个block被认为是安全的.
+
+
+The Persistence of File System Metadata
+NameNode采用EditLog来保存每一次file system metadata的改变.
+创建新文件,则在EditLog中会插入一条记录.
+NameNode用文件系统的文件来存储EditLog.
+The entire file system namespace, including the mapping of blocks to files and file system properties, is stored in a file called the FsImage.
+The FsImage is stored as a file in the NameNode’s local file system too.
+
+DataNode不会把所有的文件都创建在一个文件夹内,会用一定的机制来创建子目录.
+Blockreport就是这个节点的文件清单,
+
+The Communication Protocols
+client用ClientProtocol与NameNode交互,
+DataNode与NameNode用DataNode protocol来进行交互,
+一个RPC抽象包装了Client Protocol和DataNode Protocol.
+从设计上来说,NameNode只是回复RPC请求.
+
+Data Disk Failure, Heartbeats and Re-Replication
+周期心跳,没心跳的DataNode会被NameNode标识为DeadNode,不会有任何的请求给其.
+
+Cluster Rebalancing
+集群中的数据重新平衡,空间过满,数据会移动到另一台,等等.有些未实现.
+
+Data Integrity
+数据完整性,用MD5.
+
+Metadata Disk Failure
+NameNode可被配置成支持multiple copies of the FsImage and EditLog
+因为应用一般都是数据敏感,而不是meta敏感.
+
+Snapshots
+当前HDFS不支持快照.
+
+Data Organization
+
+Data Blocks
+通常64M
+
+Staging
+client端先把数据写到一个临时文件,当触发条件时,才会将数据上传.
+
+Replication Pipelining
+client根据拿到的DataNode list,写第一个DataNode,第一个DataNode将数据发送给第二个DataNode,依次.
+The second DataNode, in turn starts receiving each portion of the data block, writes that portion to its repository and then flushes that portion to the third DataNode.
+
+Accessibility
+HDFS provides a Java API for applications to use.
+也可以通过浏览器来访问.
+Work is in progress to expose HDFS through the WebDAV protocol.
+
+FS Shell
+bin/hadoop dfs -mkdir /foodir
+bin/hadoop dfs -rmr /foodir
+bin/hadoop dfs -cat /foodir/myfile.txt
+
+DFSAdmin
+bin/hadoop dfsadmin -safemode enter
+bin/hadoop dfsadmin -report
+bin/hadoop dfsadmin -refreshNodes
+
+Space Reclamation
+File Deletes and Undeletes
+文件删除时,被hdfs放到/trash目录下.当一段时间过后,从/trash中删除.此时,空间释放.
+当文件还在/trash目录下时,可以恢复.
+当前,这个时间限制是6小时.
+
+Decrease Replication Factor
+减小复制因子,也会导致空间释放.但是还是有延迟.
+
+
+
+
+
+
+
+
+
