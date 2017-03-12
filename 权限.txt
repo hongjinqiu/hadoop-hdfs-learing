@@ -1,0 +1,8 @@
+权限数据结构为 XAttr.java                  POSIX Extended Attribute model,
+    分为以下5种:
+    User:用户用来存储任意信息,由一个文件路径权限位来定义访问权限.For sticky directories,只有用户和有权限用户可写.
+    TRUSTED:对有权限的用户才可见和有访问权限,(filesystem API)和(fs kernel)才可以访问.
+    SYSTEM:(fs kernel)存储system object,只有(fs kernel)才可见,用户不可见.
+    SECURITY:(fs kernel)来存储security features,对用户不可见.
+    RAW:用于有时候需要暴露出来的系统属性,例如获取/.reserved/raw下的属性,只能superuser来访问.
+
