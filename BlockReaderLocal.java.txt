@@ -1,0 +1,22 @@
+本地读取,应用场景为:如果DFS client与datanode在同一相机器上,client直接从文件系统中读取,而不经过datanode读取.
+    以下四个方法的区分,
+    private synchronized int drainDataBuf(ByteBuffer buf) {
+        dataBuf(ByteBuffer)->buf,
+    private synchronized int fillBuffer(ByteBuffer buf, boolean canSkipChecksum)
+      throws IOException {
+        dataIn(FileChannel)->buf
+    private synchronized int readWithoutBounceBuffer(ByteBuffer buf)
+      throws IOException {// 边界不对齐,
+        // 清除dataBuf,
+        // 清除checksumBuf,
+        dataIn(FileChannel)->buf
+    private synchronized int readWithBounceBuffer(ByteBuffer buf,
+        boolean canSkipChecksum) throws IOException {// 边界对齐,
+        drainDataBuf(buf);
+        // buf 
+        if (buf.isDirect() && (buf.remaining() >= maxReadaheadLength) && ((dataPos % bytesPerChecksum) == 0)) {
+            fillBuffer(buf, canSkipChecksum);
+        } else {
+            drainDataBuf(buf);
+        }
+
