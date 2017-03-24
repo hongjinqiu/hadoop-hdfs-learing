@@ -1,0 +1,10 @@
+用于连接Hadoop Filesystem,执行文件操作,使用ClientProtocol与NameNode连接(RPC),对DataNode进行读写操作(DFSOutputStream).
+	Hadoop DFS users应该取得一个DistributedFileSystem实例,DFS实例里面使用DFSClient来处理文件任务.
+	
+	public MD5MD5CRC32FileChecksum getFileChecksum(String src, long length) throws IOException {
+		//与namenode进行交互,到得block信息,
+		LocatedBlocks blockLocations = callGetBlockLocations(namenode, src, 0, length);
+		//与datanode进行交互,初始化DataOutputStream,DataInputStream,
+		new Sender(out).blockChecksum(block, lb.getBlockToken());
+		final BlockOpResponseProto reply = BlockOpResponseProto.parseFrom(PBHelper.vintPrefixed(in));
+    
