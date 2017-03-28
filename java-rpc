@@ -1,0 +1,157 @@
+https://wiki.apache.org/hadoop/HadoopRpc
+
+
+hadoop采用了一个通常的RPC机制，主要思想为，定义一个接口，服务端和客户端共用。其采用了动态代理机制，生成了一个RPC接口实现。
+
+当客户端调用一个方法，代理类会做以下事情:
+1.对方法参数序列化,
+2.连接到RPC Server,
+3.告诉Server用对应的参数执行对应的方法。 
+
+服务端将:
+1.对方法参数反序列化
+2.用对应的参数执行请求的方法
+3.序列化返回值,
+4.将返回值发送给客户端,
+
+以下是一个Hadoop RPC call的例子,
+
+========================客户端 begin========================
+@ProtocolInfo(protocolName = "ping", protocolVersion = 1)
+interface PingRPC {
+    String ping();
+}
+
+
+协议可能会被更新为:
+@ProtocolInfo(protocolName = "ping", protocolVersion = 2)
+interface PingRPC {
+    String ping();
+    String enterprisePing(String companyName, String referee,
+        int priority, long timeOut, boolean useTimeout,
+        boolean useUseTimeout);
+}
+
+public static void main(String[] args) {
+    PingRPC ping = RPC.getProxy(PingProtocol.class,
+        RPC.getProtocolVersion(PingProtocol.class),
+         server.getListenerAddress(), new Configuration());
+    System.out.println("Server ping returned " + ping.ping("X"));
+    // output: pong=X
+}
+========================客户端 end========================
+
+========================服务端 begin========================
+class PingRPCImpl implements PingRPC {
+    public String ping(String msg) { return "pong=" + msg; }
+}
+public static void main(String[] args) {
+    final RPC.Server server = new RPC.Builder(new Configuration()).
+                setInstance(new PingRPCImpl()).
+                setProtocol(PingProtocol.class).
+                build();
+    server.start();
+}
+========================服务端 end========================
+
+协议定义在
+org.apache.hadoop.ipc.Client
+org.apache.hadoop.ipc.Server
+
+客户调用从,Client.call这个方法开始它的生命周期，
+Client.call将会创建一个连接,开始RPC handshake
+
+RPC handshake从header开始,
+============================
+"hrpc" 4 bytes
+Version (1 byte)
+Service Class (1 byte)
+AuthProtocol (1 byte)
+============================
+
+这里面的Version就是RPC协议版本，当前=9,
+Service Class=0,
+AuthProtocol决定是否加密.
+
+
+接下来，将设置连接上下文.
+连接上下文是一个IpcConnectionContextProto,由makeIpcConnectionContext生成,
+
+用4个字节,来标识上下文信息,
+============================
+IpcConnectionContextProto
+============================
+
+接下来，就可以发请求给Server了，
+包格式为:
+[ 包长度,RpcRequestHeader,RpcRequest,RpcRequestHeaderProto]
+
+RpcRequestHeaderProto,google Protocol Buffers object,
+1.callId,请求标识符,
+2.clientId,UUID为这个client生成的,
+3.Negative callIds
+
+payload本身就是一个方法调用的序列化实现,序列化和反序列化，通过RpcEngine来进行，默认值为:WritableRpcEngine，
+
+RPC Server的返回值:
+int - Message Length
+Varint - length of RpcResponseHeaderProto
+protocol buffers object - RpcResponseHeaderProto
+Writable response value (length known by intial length)
+
+
+当客户端等待输入时，client会发送0xFF_FF_FF_FF，来保持连接。
+
+Hadoop实例:
+
+==========================RPC header实例 begin==========================
+//h   r     p     c
+0x68, 0x72, 0x70, 0x63,
+// version, service class, AuthProtocol
+0x09, 0x00, 0x00,
+// size of next two size delimited protobuf objets:
+// RpcRequestHeader and IpcConnectionContext
+0x00, 0x00, 0x00, 0x32, // = 50
+// varint encoding of RpcRequestHeader length 
+0x1e, // = 30
+0x08, 0x02, 0x10, 0x00, 0x18, 0xfd, 0xff, 0xff, 0xff, 0x0f,
+0x22, 0x10, 0x87, 0xeb, 0x86, 0xd4, 0x9c, 0x95, 0x4c, 0x15,
+0x8a, 0xb0, 0xd7, 0xbc, 0x2e, 0xca, 0xca, 0x37, 0x28, 0x01,
+// varint encoding of IpcConnectionContext length 
+0x12, // = 18
+0x12, 0x0a, 0x0a, 0x08, 0x65, 0x6c, 0x65, 0x69, 0x62, 0x6f,
+0x76, 0x69, 0x1a, 0x04, 0x70, 0x69, 0x6e, 0x67,
+==========================RPC header实例 end==========================
+
+==========================RPC output实例 begin==========================
+// Size of size delimited
+// RpcRequestHeader + RpcRequest protobuf objects
+0x00, 0x00, 0x00, 0x3f, // = 63
+// varint size of RpcRequest Header
+0x1a, // = 26
+0x08, 0x01, 0x10, 0x00, 0x18, 0x00, 0x22, 0x10, 0x87, 0xeb,
+0x86, 0xd4, 0x9c, 0x95, 0x4c, 0x15, 0x8a, 0xb0, 0xd7, 0xbc,
+0x2e, 0xca, 0xca, 0x37, 0x28, 0x00,
+// RPC Request writable. It's not size delimited
+// long - RPC version
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, // = 2
+// utf8 string - protocol name
+0x00, 0x04, // string legnth = 4
+// p     i     n     g
+0x70, 0x69, 0x6e, 0x67,
+// utf8 string - method name
+0x00, 0x04, // string legnth = 4
+// p     i     n     g
+0x70, 0x69, 0x6e, 0x67,
+// long - client version
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // = 1
+// int - client method hash
+0xa0, 0xbd, 0x17, 0xcc,
+// int - parameter class length
+0x00, 0x00, 0x00, 0x00,
+==========================RPC output实例 end==========================
+
+
+
+
+
