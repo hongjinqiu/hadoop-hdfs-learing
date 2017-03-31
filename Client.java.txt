@@ -1,0 +1,39 @@
+Client.java
+	IPC service的client，IPC调用，传递一个Writable作为参数，又返回一个Writable。
+	Connection对象,读取response,并通知callers,每个连接拥有一个socket与远程连接,socket可发送多个Call,接收到response可能会失序.
+	设置tcpnodelay,使得一次性可以发送较大的数据量,
+	按协议,往socket写字节,调用了不少Google ProtoBuffer的协议生成类。调用时,多线程写,内部同步，接收只有一个线程，call.setRpcResponse(value);
+	几个发送数据,接收数据的方法:
+	
+	// 发送rcp请求给IPC Server,
+    public void sendRpcRequest(final Call call)
+        throws InterruptedException, IOException {
+        ......
+        header.writeDelimitedTo(d);
+      	call.rpcRequest.write(d);
+        ......
+        out.writeInt(totalLength); // Total Length
+        out.write(data, 0, totalLength);// RpcRequestHeader + RpcRequest
+        out.flush();
+        ......
+	
+	// 连接到服务器,建立I/O流.向服务器发送一个Rpc包,包括内容,开始连接线程,等待响应,
+	private synchronized void setupIOstreams(
+        AtomicBoolean fallbackToSimpleAuth) {
+        
+    // 接收响应,每个响应都有一个callId,因此,客户端可以多线程发送多个Call,发送完之后,调用call.wait();接收完后,notify();
+    private void receiveRpcResponse() {
+        call.setRpcResponse(value);	// 这里面会调用	notify();
+
+	// 获取连接,发送rpcRequest给IPC Server,返回rpc response,调用call.wait();等待receiveRpcResponse()里面的notify()
+	// call方法里面的调用流程为:
+	// call->getConnection()->connection.setupIOstreams(fallbackToSimpleAuth);
+    public Writable call(RPC.RpcKind rpcKind, Writable rpcRequest,
+      ConnectionId remoteId, int serviceClass,
+      AtomicBoolean fallbackToSimpleAuth) throws IOException {
+      ......
+      connection.sendRpcRequest(call);
+      ......
+      call.wait();
+      ......
+      
