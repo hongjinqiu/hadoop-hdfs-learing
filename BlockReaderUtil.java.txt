@@ -1,0 +1,13 @@
+BlockReaderUtil.java
+
+public static int readAll(BlockReader reader,
+      byte[] buf, int offset, int len) throws IOException {
+      读取len长度字节,返回值有可能<len
+
+public static void readFully(BlockReader reader,
+      byte[] buf, int off, int len) throws IOException {
+      读取len长度字节,一定要返回len长度,否则报错
+
+
+
+
