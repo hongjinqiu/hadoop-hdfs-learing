@@ -1,0 +1,24 @@
+采用动态代理调用Client,完成hadoop rpc调用,
+	private static class Invoker implements RpcInvocationHandler {
+		// 对RPC相关的方法进行反射,构造请求,发送请求,包装返回请求,
+		public Object invoke(Object proxy, Method method, Object[] args) throws ServiceException {
+			......
+			RequestHeaderProto rpcRequestHeader = constructRpcRequestHeader(method);
+			......调用client进行call,
+			val = (RpcResponseWrapper) client.call(RPC.RpcKind.RPC_PROTOCOL_BUFFER,
+						new RpcRequestWrapper(rpcRequestHeader, theRequest), remoteId, fallbackToSimpleAuth);
+			......
+			returnMessage = prototype.newBuilderForType().mergeFrom(val.theResponseRead).build();
+			......
+
+
+	public static class Server extends RPC.Server {
+		static class ProtoBufRpcInvoker implements RpcInvoker {
+			public Writable call(RPC.Server server, String protocol, Writable writableRequest, long receiveTime)
+					throws Exception {
+				......
+				MethodDescriptor methodDescriptor = service.getDescriptorForType().findMethodByName(methodName);
+				......
+				Message param = prototype.newBuilderForType().mergeFrom(request.theRequestRead).build();
+				......
+				result = service.callBlockingMethod(methodDescriptor, null, param);
