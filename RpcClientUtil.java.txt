@@ -1,0 +1,9 @@
+维护了一个缓存,
+
+// 判断某个方法是否支持,
+    public static boolean isMethodSupported(Object rpcProxy, Class<?> protocol, RPC.RpcKind rpcKind, long version, String methodName) throws IOException {
+        调用方法    getVersionSignatureMap  ,取得 versionMap,
+        如果versionMap == null,则调RPC请求,从服务端取得versionMap,缓存起来,
+        调方法methodExists(methodHash, version, versionMap);判断某个方法是否存在.
+
+
