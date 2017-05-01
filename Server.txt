@@ -1,0 +1,8 @@
+Server,方法,
+    提供一个IPC Service服务,由一个parameter class和value class来定义.
+    内部使用了NIO/Selector来处理连接,
+    Responder,回写RPC call到client,
+    Listener,通过NIO,分发Selector给Reader线程处理,Reader将call放入callQueue中,
+        Listener.Reader,
+    Handler,处理Reader线程放入callQueue中的Call,
+
