@@ -1,0 +1,15 @@
+WritableRpcEngine.java
+    Writable data的RpcEngine实现,
+    WritableRpcEngine.Invocation,
+        // 方法Invocation,包括方法名和参数,一个数据结构,拥有从DataInput中读取Field的方法和写Field数据到DataOutput中的方法.
+    WritableRpcEngine.Invoker,
+        // 用来做动态代理用的,主要用来包装client的call方法,
+    WritableRpcEngine.Server,
+        // RPC Server,继承自RPC.Server,
+        // 构造函数中,主要调用,registerProtocolAndImpl(RPC.RpcKind.RPC_WRITABLE, protocolClass, protocolImpl);方法,
+    WritableRpcEngine.Server.WritableRpcInvoker,
+        // 服务端包装执行rpcRequest的方法,
+        Method method =
+              protocolImpl.protocolClass.getMethod(call.getMethodName(),
+              call.getParameterClasses());
+
