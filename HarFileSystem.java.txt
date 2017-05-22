@@ -1,0 +1,9 @@
+_masterindex:包含指向_index的指针,
+_index:索引文件,
+part-*:
+
+org.apache.hadoop.fs.HarFileSystem.HarMetaData
+	private void parseMetaData() throws IOException {
+		in = fs.open(masterIndexPath);
+		解析masterIndexPath的内容,按行逐行读取,分隔,封装进stores中.
+		解析archiveIndexPath,遍历stores,取得begin,读出一行,封装进archive中.
