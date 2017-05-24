@@ -1,0 +1,7 @@
+	磁盘空间分配实现，采用round-robin模式。依次查询磁盘。一个JVM可以有多个Allocator，但是每个context只能有一个allocator.
+	org.apache.hadoop.fs.LocalDirAllocator.AllocatorPerContext
+		public synchronized Path getLocalPathForWrite(String pathStr, long size, Configuration conf, boolean checkWrite) throws IOException {
+			从文件系统中获取路径,遍历dirs,
+			if (capacity > size) {
+				returnPath = createPath(pathStr, checkWrite);
+			}
