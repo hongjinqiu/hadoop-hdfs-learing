@@ -1,0 +1,9 @@
+org.apache.hadoop.fs.TrashPolicyDefault
+	将文件移到.Trash目录下,并且保存原来的路径,周期删除.
+	createCheckpoint,将.Trash/Current复制一份出来,放入new Path(trash, CHECKPOINT.format(new Date()));里面,
+
+  里面定义了一个线程类,Emptier,按emptierInterval进行轮询,
+	依次调用以下两个方法,
+	trash.deleteCheckpoint();
+	trash.createCheckpoint();
+	deleteCheckpoint,根据文件名(日期在文件名里面),与deletionInterval进行对比,过期删除
