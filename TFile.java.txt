@@ -1,0 +1,16 @@
+https://wenku.baidu.com/view/ed2000f8aef8941ea76e0522.html
+
+TFile与SequenceFile的对比,
+1.性能与可扩展性,
+1.1.	TFile只使用1个Compressor/Decompressor,而SequenceFile使用4个,
+1.2.	TFile does not require a single key-value pair be buffered in memory,可支持value size到2GB,
+1.3.	TFile对小读写,会分配更小,可控的buffer,对大IO,会避免buffer copy,比较少耗CPU,
+1.4.	新功能:
+1.4.1.		支持sorted TFile
+1.4.2.		自定义Comparator,
+1.4.3.		Named application meta data blocks
+
+1.4.4.	限制,TFile追加时不可读,
+1.4.5.	TFile的key,value,不能为object,
+
+数据模型和操作,
