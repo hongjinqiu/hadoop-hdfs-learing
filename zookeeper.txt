@@ -1,0 +1,193 @@
+linux mysql jbd2 performance 
+https://serverfault.com/questions/363355/io-wait-causing-so-much-slowdown-ext4-jdb2-at-99-io-during-mysql-commit
+
+
+
+https://zookeeper.apache.org/						finish,
+
+https://cwiki.apache.org/confluence/display/ZOOKEEPER/Index		running,-----------,
+
+Paxos,				
+Fast Paxos,
+
+
+http://zookeeper.apache.org/doc/
+
+文档路径,
+http://zookeeper.apache.org/doc/r3.4.10/
+
+file:///E:/hongjinqiu/soft/java/zookeeper-3.4.10/docs/index.html
+
+应用程序编程,
+file:///E:/hongjinqiu/soft/java/zookeeper-3.4.10/docs/zookeeperProgrammers.html
+
+
+
+The ZooKeeper Data Model
+
+术语,
+znodes	--	data node,
+Servers	--	ZooKeeper Service所在的服务器,
+quorum peers	--	使用ZooKeeper Service的host或process,
+
+一、
+Znodes 特征,
+Watches,
+客户端可以在znodes上设置Watches,对znodes的改变,会触发Watches,同时,清除watches,
+
+Data Access,
+每一个node都有一个Access Control List,
+
+Ephemeral Nodes		临时节点,生命周期为session周期,session过期,则删除,不能有children.
+
+Sequence Nodes -- Unique Naming		Zookeeper可在路径末尾添加一个递增的counter,
+
+2.
+Time in ZooKeeper
+
+2.1.
+Zxid,每个改变都有一个唯一的zxid,ZooKeeper Transaction Id.
+
+2.2.
+Version numbers,版本号递增,
+
+2.3.
+Ticks,
+
+2.4.
+Real time,
+
+
+二、
+ZooKeeper Sessions
+采用如下的字符串来连接,"127.0.0.1:4545" or "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002"
+也可以在连接时,带上路径,
+"127.0.0.1:4545/app/a" or "127.0.0.1:3000,127.0.0.1:3001,127.0.0.1:3002/app/a"
+所有的路径都会变成相对路径,
+session过期时,其会删除session拥有的所有的node,
+
+
+ZooKeeper Watches
+ZooKeeper的读操作,getData(),getChildren(),exists(),有个选项可以用来设置watch,
+One-time trigger,用getData("/znode1", true),只会触发一次watch event,
+Sent to the client,对同一个客户端而言,如果有watch event,只有当watche event发生后,才会读到最新的数据.
+The data for which the watch was set,	data watches和child watches,
+getData(),exists()设置data watches,
+getChildren(),设置child watches,
+create()方法,会触发这个znode的data watch和parent node的child watches,
+
+Semantics of Watches	Watch语义,
+Created event
+Deleted event,
+Changed event,
+child event,
+
+What ZooKeeper Guarantees about Watches
+有顺序,
+
+Consistency Guarantees
+
+
+
+ZooKeeper access control using ACLs
+权限有:
+CREATE
+READ
+WRITE
+DELETE
+ADMIN
+
+ACL权限schema,
+world,	任意人,
+auth,	权限人,
+digest,
+ip,
+
+读到了,
+const int ZOO_PERM_ALL;// all of the above flags OR’d together
+
+
+http://zookeeper.apache.org/doc/r3.4.10/recipes.html
+
+
+Name Service和Configuration是ZooKeeper直接提供的两个功能.直接提供了API.
+
+group membership,
+
+Barrier,exists函数即可,
+
+Double Barriers,
+一起begin,一起end,
+
+DistributedQueue,	消费时,被别的节点给消费了,就这样,简简单单,
+try{
+    byte[] data = zookeeper.getData(path, false, null);
+    zookeeper.delete(path, -1);
+    return data;
+}catch(KeeperException.NoNodeException e){
+    // Another client deleted the node first.
+}
+
+还有阻塞实现,用CountDownLatch来实现,在 watch 里面countDown,
+
+
+查看一下分布式锁的相关实现,
+E:\hongjinqiu\soft\java\zookeeper-3.4.10\src\recipes\lock
+
+
+CreateMode
+PERSISTENT			客户端 disconnect 时,znode 不自动删除,
+PERSISTENT_SEQUENTIAL		客户端 disconnect 时,znode 不自动删除,名称后面将会附上一个单调递增的number.
+EPHEMERAL			客户端 disconnect 时,znode 自动删除,
+EPHEMERAL_SEQUENTIAL		客户端 disconnect 时,znode 自动删除,名称后面将会附上一个单调递增的number.
+
+Locks,
+	LockListener.java			接口
+		public void lockAcquired();
+		public void lockReleased();
+	ProtocolSupport.java
+		与ZooKeeper连接断掉,会重新连接,
+	WriteLock.java
+	ZNodeName.java
+	ZooKeeperOperation.java
+
+	1.Call create( ) with a pathname of "_locknode_/lock-" and the sequence and ephemeral flags set.
+		调用create方法,pathname命名为:_locknode_/lock-,设置sequence和临时flags,
+	2.Call getChildren( ) on the lock node without setting the watch flag (this is important to avoid the herd effect).
+		在lock node上调用getChildren(),并且不设watch flag,
+	3.If the pathname created in step 1 has the lowest sequence number suffix, the client has the lock and the client exits the protocol.
+		如果第1步创建的lock-目录,sequece最小,则这个client拥有锁,否则,退出,
+	4.The client calls exists( ) with the watch flag set on the path in the lock directory with the next lowest sequence number.
+		在lock path上调用exists()方法,带watch flag,用next lowest sequence number,
+	5.if exists( ) returns false, go to step 2. Otherwise, wait for a notification for the pathname from the previous step before going to step 2.
+		如果4不存在,->2,
+		否则wait for notification,
+
+	shared locks,共享锁,
+	读锁,
+	1.nodename 写 "_locknode_/read-" ,没有更小的 write- ,即获取锁成功,
+
+	写锁,
+	1.
+
+
+Two-phased Commit
+	所有客户端通过,或者都不通过,
+	1.create transaction node /app/Tx,
+	2.create participating site /app/Tx/s_i,
+	3.然后 watch node,
+	4.缺点,
+	4.1.消息复杂度,O(n2),
+	4.2.通过临时节点检测到 site 失败,
+	
+	针对缺点1:只通知coordinator ,transaction node的变化,当做决定时,再通知coordinator ,
+	针对缺点2:coordinator 传播 事务给sites,每个site创建自己的临时节点.
+
+
+Leader Election
+	1.跟锁比较相似,用 SEQUENCE|EPHEMERAL 标记,
+	2.观察sequence比自己小的那一部分中最大的节点,
+
+
+
+
